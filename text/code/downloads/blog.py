@@ -12,7 +12,7 @@ from utils import root
 
 
 _URL = "https://lingcog.blogspot.com/p/datasets.html"
-_DATA_URL = "https://drive.google.com/u/0/uc?id=1cGy4RNDV87ZHEXbiozABr9gsSrZpPaPz&export=download"
+_DATA_URL = "https://huggingface.co/datasets/blog_authorship_corpus/resolve/main/data/blogs.zip"
 
 zip_path = root / 'data/raw/blogs.zip'
 data_dir = root / 'data/raw/blogs'

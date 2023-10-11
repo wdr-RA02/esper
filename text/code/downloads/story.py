@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from utils import download_base, root
 
-_DATA_URL = 'https://github.com/snigdhac/StoryComprehension_EMNLP/blob/master/Dataset/RoCStories/100KStories.csv'
+_DATA_URL = 'https://raw.githubusercontent.com/snigdhac/StoryComprehension_EMNLP/master/Dataset/RoCStories/100KStories.csv'
 
 data_dir = root / 'data/raw/story'
 out_dir = root / 'data/texts'
@@ -15,10 +15,11 @@ Path(out_dir).mkdir(exist_ok=True)
 
 path = data_dir / 'story.csv'
 
-with open('env.json') as f:
-    config = json.load(f)
+# 莫名其妙
+# with open('env.json') as f:
+#     config = json.load(f)
 
-_DATA_URL = config['story_path']
+# _DATA_URL = config['story_path']
 
 download_base(_DATA_URL, path)
 

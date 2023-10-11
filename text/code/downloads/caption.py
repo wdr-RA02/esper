@@ -9,8 +9,8 @@ from tqdm import tqdm
 
 from utils import root, download
 
-
-_DATA_URL = "http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip"
+# original link is dead, use webarchive instead
+_DATA_URL = "https://web.archive.org/web/20190308081051/https://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip"
 
 zip_path = root / 'data/raw/caption.zip'
 data_dir = root / 'data/raw/caption'
