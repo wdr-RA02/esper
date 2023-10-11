@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from tqdm import tqdm
+from tqdm import tqdm, trange
+from math import ceil
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils import root
@@ -27,21 +28,56 @@ with open(Path(out_dir) / 'corpus.txt', 'r') as f:
             break
         i += 1
 
+def save_res(res, first:bool):
+    with open(Path(out_dir) / 'generation.txt', 'w' if first else 'a') as f:
+        for line in res:
+            f.write(f'{line}\n')
+
+
+def get_batch(prefixes, beg_id, bsz):
+    len_list=len(prefixes)
+    end_id = beg_id + bsz
+    if end_id > len_list:
+        end_id = len_list
+    
+    return prefixes[beg_id:end_id]
+
 
 res = []
-for prefix in tqdm(prefixes, total=len(prefixes)):
-    tokens = tokenizer(prefix, return_tensors='pt').to(device)
+
+# save every several pfxes
+save_interval = 20
+first = True
+counter = 0
+total = 0
+batch_size = 50
+len_pfxes = len(prefixes)
+batches = ceil(len_pfxes/batch_size)
+
+
+for idx in trange(0, len_pfxes, batch_size, total=batches):
+    has_text=False
+    prefix = get_batch(prefixes, idx, batch_size)
+    tokens = tokenizer(prefix, return_tensors='pt', padding=True).to(device)
     text = model.generate(**tokens, do_sample=True, top_p=0.9, max_length=80,
                           pad_token_id=tokenizer.pad_token_id)
-    text = tokenizer.decode(text[0])
-    text = '.'.join(text.split('.')[1:]).strip()
-    text = text.replace('<|endoftext|>', '')
-    text = text.replace('\n', ' ')
-    if text:
-        res.append(text)
+    
+    texts = tokenizer.batch_decode(text)
+    for text in texts:
+        text = '.'.join(text.split('.')[1:]).strip()
+        text = text.replace('<|endoftext|>', '')
+        text = text.replace('\n', ' ')
+        if text:
+            res.append(text)
+            has_text=True
+    
+    counter += int(has_text)
+    
+    if counter % save_interval == 0 or idx+batch_size>=len_pfxes:
+        save_res(res, first=first)
+        first=False
+        total += len(res)
+        # empty res list after one save
+        res=[]
 
-
-print(f"{len(res)} lines in total")
-with open(Path(out_dir) / 'generation.txt', 'w') as f:
-    for line in res:
-        f.write(f'{line}\n')
+print(f"{total} lines in total")
