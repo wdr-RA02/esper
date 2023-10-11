@@ -5,8 +5,9 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-
-root = Path('../../').resolve()
+import os
+root_path = os.environ.get("ESPER_DATASET_PATH", "../../")
+root = Path(root_path).resolve()
 # root = Path('/148Dataset/data-/ESPER_dataset').resolve()
 
 def download(url, tgt):
