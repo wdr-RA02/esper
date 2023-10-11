@@ -2,6 +2,7 @@ from cog import BasePredictor, Path, Input, File
 import torch
 from munch import Munch
 from PIL import Image
+import json
 
 from demo_from_image import prepare
 

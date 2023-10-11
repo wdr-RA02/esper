@@ -22,7 +22,7 @@ from torch.utils.tensorboard import SummaryWriter
 from transformers import get_linear_schedule_with_warmup
 
 from arguments import get_args
-from data import ClipCocoDataset, ClipCocoCollator
+from .data import ClipCocoDataset, ClipCocoCollator
 from policy import Policy
 from ref_policy import RefPolicy
 from value import Value
@@ -103,8 +103,13 @@ class PPOTrainer:
         self.metrics = Eval()
 
     def compute_rewards(self, scores, logprobs, ref_logprobs, masks):
-        kl = logprobs - ref_logprobs
+        kl = logprobs - ref_logprobs #[b, resp_len]
+        # diff between ClipCap_GPT2 and vanlia GPT2 wro the same sequence
         non_score_reward = -self.kl_ctl.value * kl
+        # l=length for each seq in batch
+        # s=normed mean CLIP score of text_i and feat_i
+
+        # [b, resp_len]
         score_reward = torch.tensor([[0.] * (l-1) + [s] + [0.] * (self.params.response_length - l) for s, l
                                      in zip(scores, torch.sum(masks, dim=1).tolist())], device=logprobs.device)
         rewards = non_score_reward + score_reward
@@ -147,8 +152,9 @@ class PPOTrainer:
         except (StopIteration, AssertionError):
             self.train_sampler = iter(self.train_dataloader)
             image_ids, input_ids, attention_mask, features, labels, _ = next(self.train_sampler)
-
+            # kwd"input_ids" represents the prefix 'caption:'
         with torch.no_grad():
+            # [feature+txt_prefix]->Policy->random_sampled_text
             rollouts = self.policy.sample(input_ids=input_ids, attention_mask=attention_mask,
                                           features=features, labels=labels,
                                           max_len=self.params.response_length)
@@ -158,17 +164,23 @@ class PPOTrainer:
                               'response_mask': rollouts['response/mask'],
                               'features': features,
                               'labels': labels}
+            # output of value model given(feature, response_input_id)
             rollouts['response/value'] = self.value_model.forward_pass(**forward_inputs)['response/value']
             rollouts['response/value'] *= rollouts['response/mask']
-
+            
+            # ref_logprob is the prob dist of a vanlia GPT2 model
+            # given input [txt_prefix+rand_sample_text]
             ref_logprobs = self.ref_policy.forward_pass(**{k: v for k, v in forward_inputs.items() if k not in ['features', 'labels']})['response/log_prob']
 
+        # log_probs of current policy
         logprobs, masks = rollouts['response/log_prob'], rollouts['response/mask']
         pair_scores = None
         style_scores = None
         style_acc = None
         acc = None
+        
         if 'pair' in self.score_models:
+            # Calculate CLIP_sim score
             pair_scores = self.score_models['pair'].get_reward(features, rollouts['response/text'], f'step{step_num}')
         if 'style' in self.score_models:
             style_scores, acc = self.score_models['style'].get_reward(labels, rollouts['response/text'], f'step{step_num}')
@@ -178,6 +190,8 @@ class PPOTrainer:
             scores = pair_scores
         else:
             scores = pair_scores + style_scores
+        
+        # rewards: [b, resp_len]:=[next_token_logit from policy(len_i-1), clip_score, 0*resp-len_i]
         rewards, non_score_reward, kl_coef = self.compute_rewards(scores, logprobs, ref_logprobs, masks)
         rollouts['rewards'] = rewards
         rollouts['features'] = features
@@ -435,6 +449,9 @@ class PPOTrainer:
             lastgaelam = 0
             advantages_reversed = []
             gen_length = self.params.response_length
+            # estimate advantage fn w/ GAE method
+            # advantage_t=(del_t + (gammalam) * A_{t+1})
+            # del_t=r_t+\gamma * V(s_{t+1}) - V(s_t)
             for t in reversed(range(gen_length)):
                 nextvalues = values[:, t + 1] if t < gen_length - 1 else 0.0
                 delta = rewards[:, t] + self.params.gamma * nextvalues - values[:, t]
@@ -464,8 +481,11 @@ class PPOTrainer:
         vf_clipfrac = reduce_mean(torch.gt(vf_losses2, vf_losses1).type_as(vf_losses1), masks)
 
         logprob = outputs['response/log_prob']
+        # ratio=KL(policy||ref_policy)
         ratio = torch.exp(logprob - old_logprob)
+        # KL(P_pol||P_{ref_pol})*advantage
         pg_losses = -advantages * ratio
+        # g(\epsilon, advantage)
         pg_losses2 = -advantages * torch.clamp(ratio, min=1.0 - self.params.cliprange, max=1.0 + self.params.cliprange)
         pg_loss = reduce_mean(torch.max(pg_losses, pg_losses2), masks)
         pg_clipfrac = reduce_mean(torch.gt(pg_losses2, pg_losses).type_as(pg_losses), masks)
