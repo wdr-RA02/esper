@@ -3,7 +3,7 @@
     "sns": [
         "https://github.com/karansikka1/documentIntent_emnlp19",
         "https://raw.githubusercontent.com/cardiffnlp/tweeteval/main/datasets/emotion",
-        "http://help.sentiment140.com/for-students/",
+        "http://help.sentiment140.com/for-students/"
     ],
     "instruction": ["https://github.com/mahnazkoupaee/WikiHow-Dataset"],
     "story": [

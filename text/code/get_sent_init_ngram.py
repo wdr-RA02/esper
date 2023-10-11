@@ -6,7 +6,7 @@ from typing import Optional
 from pathlib import Path
 
 import numpy as np
-from simple_parsing import ArgumentParser
+from argparse import ArgumentParser
 
 
 @dataclass
