@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from typing import Union, List, Dict, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer, GPTJForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation_logits_process import (
     LogitsProcessorList,
     NoBadWordsLogitsProcessor,

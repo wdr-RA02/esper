@@ -22,7 +22,7 @@ from torch.utils.tensorboard import SummaryWriter
 from transformers import get_linear_schedule_with_warmup
 
 from arguments import get_args
-from .data import ClipCocoDataset, ClipCocoCollator
+from data import ClipCocoDataset, ClipCocoCollator
 from policy import Policy
 from ref_policy import RefPolicy
 from value import Value

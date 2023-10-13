@@ -8,7 +8,7 @@ from typing import Tuple, Optional, Union
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from transformers import AutoModelForCausalLM, AutoTokenizer, GPTJForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from load import load_weights
 
