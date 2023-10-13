@@ -138,5 +138,5 @@ if __name__ == '__main__':
     model = Model(transformer=args.transformer, max_length=args.max_length, use_kl=args.use_kl,
                   prefix_label=not args.no_prefix_label)
     #trainer = pl.Trainer(gpus=1, **tr_args)
-    trainer = pl.Trainer(accelerator="gpu", strategy="ddp", **tr_args)
+    trainer = pl.Trainer(accelerator="gpu", strategy="ddp", max_epochs=20, **tr_args)
     trainer.fit(model, loaders['train'], loaders['val'])

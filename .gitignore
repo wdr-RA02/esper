@@ -1,2 +1,5 @@
 __pycache__
 repos
+
+text/data/log/**
+text/data/texts
