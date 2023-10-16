@@ -147,12 +147,18 @@ class PPOTrainer:
         step_started_at = time.time()
 
         try:
-            image_ids, input_ids, attention_mask, features, labels, _ = next(self.train_sampler)
+            item_batch=next(self.train_sampler)
+            image_ids, input_ids, attention_mask, features, labels = [item_batch[k] for k in ["image_ids", "input_ids", "attention_mask", "features", "labels"]]
             assert len(input_ids) == self.params.batch_size, 'insufficient batch'
         except (StopIteration, AssertionError):
             self.train_sampler = iter(self.train_dataloader)
-            image_ids, input_ids, attention_mask, features, labels, _ = next(self.train_sampler)
+            image_ids, input_ids, attention_mask, features, labels = [next(self.train_sampler)[k] for k in ["image_ids", "input_ids", "attention_mask", "features", "labels"]]
             # kwd"input_ids" represents the prefix 'caption:'
+        for item in (image_ids, input_ids, attention_mask, features, labels):
+            if type(item) is torch.Tensor:
+                item.to(device=self.policy.device)
+
+        
         with torch.no_grad():
             # [feature+txt_prefix]->Policy->random_sampled_text
             rollouts = self.policy.sample(input_ids=input_ids, attention_mask=attention_mask,
@@ -305,7 +311,8 @@ class PPOTrainer:
         log.info(f"[ppo_step {step}] evaluating ...")
 
         perplexities, stats = [], defaultdict(lambda: [])
-        for i, (image_ids, input_ids, attention_mask, features, labels, coco_captions) in enumerate(tqdm(self.val_dataloader)):
+        for i, eval_item in enumerate(tqdm(self.val_dataloader)):
+            image_ids, input_ids, attention_mask, features, labels, coco_captions=[eval_item[k] for k in list(eval_item.keys())[0:6]]
             with torch.no_grad():
                 rollouts = self.policy.sample(input_ids=input_ids, attention_mask=attention_mask,
                                               features=features, labels=labels,
@@ -351,7 +358,8 @@ class PPOTrainer:
         data_hypos, data_tgts, data_image_ids = [], [], []
         data_hypos_log = []
         perplexities, stats = [], defaultdict(lambda: [])
-        for i, (image_ids, input_ids, attention_mask, features, labels, coco_captions) in enumerate(tqdm(self.val_dataloader)):
+        for i, eval_item in enumerate(tqdm(self.val_dataloader)):
+            image_ids, input_ids, attention_mask, features, labels, coco_captions=[eval_item[k] for k in list(eval_item.keys())[0:6]]
             with torch.no_grad():
                 rollouts = self.policy.sample(input_ids=input_ids, attention_mask=attention_mask,
                                               features=features, labels=labels,
@@ -525,6 +533,9 @@ def main():
     log.info(f'Detect {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     save_name = Path(args.config).stem
+
+    args.use_coco_eval=False
+
     args.save_dir = os.path.join(args.output_dir, save_name, 'orig')
     args.reward_dir = os.path.join(args.save_dir, 'reward')
     args.model_dir = os.path.join(args.save_dir, 'model')
