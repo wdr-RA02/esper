@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from typing import Optional
 
-from simple_parsing import ArgumentParser
+from argparse import ArgumentParser
 
 from metric.lang_metrics import Eval
 
